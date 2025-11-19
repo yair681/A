@@ -1,8 +1,7 @@
-require('dotenv').config(); // מאפשר שימוש במשתני סביבה מהקובץ .env
+require('dotenv').config(); 
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
-const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -10,7 +9,6 @@ const PORT = process.env.PORT || 3000;
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
-// כתובת החיבור נלקחת ממשתנה הסביבה MONGO_URI
 const mongoURI = process.env.MONGO_URI; 
 if (!mongoURI) {
     console.error("FATAL ERROR: MONGO_URI is not defined in the environment.");
@@ -30,7 +28,6 @@ const studentSchema = new mongoose.Schema({
 
 const Student = mongoose.model('Student', studentSchema);
 
-// סיסמת המורה (נלקחת ממשתנה סביבה)
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "1234";
 
 // --- פונקציה לאתחול ראשוני של הכיתה ---
@@ -47,12 +44,11 @@ async function initDB() {
         console.log("Database initialization complete.");
     }
 }
-// נריץ את האתחול רק לאחר שהתחברנו ל-DB
 mongoose.connection.on('connected', initDB);
 
 // --- נתיבים (Routes) ---
 
-// התחברות
+// 1. התחברות
 app.post('/api/login', async (req, res) => {
     const { code, type } = req.body;
 
@@ -72,19 +68,19 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// קבלת רשימת תלמידים (למורה)
+// 2. קבלת רשימת תלמידים (למורה)
 app.get('/api/students', async (req, res) => {
     const students = await Student.find({}).select('id name balance');
     res.json(students);
 });
 
-// עדכון יתרה
+// 3. עדכון יתרה
 app.post('/api/update', async (req, res) => {
     const { studentId, amount } = req.body;
     
     const updatedStudent = await Student.findOneAndUpdate(
         { id: studentId },
-        { $inc: { balance: parseInt(amount) } }, // הוספה/הפחתה
+        { $inc: { balance: parseInt(amount) } },
         { new: true }
     );
 
@@ -95,7 +91,31 @@ app.post('/api/update', async (req, res) => {
     }
 });
 
-// קבלת יתרה אישית (לתלמיד)
+// 4. נתיב חדש: יצירת תלמיד
+app.post('/api/create-student', async (req, res) => {
+    const { id, name, balance } = req.body;
+    
+    const existingStudent = await Student.findOne({ id: id });
+    if (existingStudent) {
+        return res.json({ success: false, message: "קוד תלמיד זה כבר קיים במערכת." });
+    }
+
+    const newStudent = new Student({
+        id: id,
+        name: name,
+        balance: parseInt(balance) || 0
+    });
+
+    try {
+        await newStudent.save();
+        res.json({ success: true, message: `התלמיד ${name} נוצר בהצלחה.`, newStudent: newStudent });
+    } catch (error) {
+        res.json({ success: false, message: "שגיאה בשמירת תלמיד חדש." });
+    }
+});
+
+
+// 5. קבלת יתרה אישית (לתלמיד)
 app.post('/api/my-balance', async (req, res) => {
     const { code } = req.body;
     const student = await Student.findOne({ id: code });
