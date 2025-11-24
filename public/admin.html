@@ -103,16 +103,32 @@
 <body>
     <div class="header">
         <h2>מרכז בקרה - מורה 🧑‍🏫</h2>
-        <button onclick="logout()" style="background-color: #6c757d; border-radius: 6px; padding: 8px 15px;">יציאה</button>
+        <div>
+            <button onclick="window.location.href='shop-admin.html'" style="background-color: #17a2b8; border-radius: 6px; padding: 8px 15px; margin-left: 10px; color: white; border: none; cursor: pointer;">ניהול חנות 🏪</button>
+            <button onclick="logout()" style="background-color: #6c757d; border-radius: 6px; padding: 8px 15px; color: white; border: none; cursor: pointer;">יציאה</button>
+        </div>
     </div>
 
     <div class="content-grid">
         <div class="card">
-            <h3>+ יצירת תלמיד חדש</h3>
+            <h3>⚡ יצירת משתמש חדש</h3>
+            <label>
+                <input type="radio" name="userType" value="student" checked onchange="toggleUserType()"> תלמיד
+                <input type="radio" name="userType" value="teacher" onchange="toggleUserType()" style="margin-right: 15px;"> מורה
+            </label>
+            <div id="studentForm">
+                <h4 style="margin-top: 15px;">יצירת תלמיד חדש</h4>
             <input type="number" id="newId" placeholder="קוד תלמיד (למשל 104)" required>
             <input type="text" id="newName" placeholder="שם מלא של התלמיד" required>
             <input type="number" id="initialBalance" placeholder="יתרה התחלתית (ברירת מחדל: 0)" value="0">
-            <button class="btn-primary" onclick="createNewStudent()">צור משתמש</button>
+                <button class="btn-primary" onclick="createNewStudent()">צור תלמיד</button>
+            </div>
+            <div id="teacherForm" style="display: none;">
+                <h4 style="margin-top: 15px;">יצירת מורה חדש</h4>
+                <input type="text" id="teacherPassword" placeholder="סיסמת המורה החדש" required>
+                <input type="text" id="teacherName" placeholder="שם המורה (אופציונלי)">
+                <button class="btn-primary" onclick="createNewTeacher()">צור מורה</button>
+            </div>
             <div id="creationMessage"></div>
         </div>
 
@@ -139,6 +155,45 @@
             el.innerHTML = message;
             el.className = isSuccess ? 'msg-success' : 'msg-error';
             setTimeout(() => { el.innerHTML = ''; el.className = ''; }, 3000);
+        }
+
+        function toggleUserType() {
+            const userType = document.querySelector('input[name="userType"]:checked').value;
+            const studentForm = document.getElementById('studentForm');
+            const teacherForm = document.getElementById('teacherForm');
+            
+            if (userType === 'student') {
+                studentForm.style.display = 'block';
+                teacherForm.style.display = 'none';
+            } else {
+                studentForm.style.display = 'none';
+                teacherForm.style.display = 'block';
+            }
+        }
+
+        async function createNewTeacher() {
+            const password = document.getElementById('teacherPassword').value;
+            const name = document.getElementById('teacherName').value;
+            
+            if (!password) {
+                showMessage('creationMessage', 'נא למלא סיסמה למורה.', false);
+                return;
+            }
+
+            const res = await fetch('/api/create-teacher', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password, name })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                showMessage('creationMessage', data.message, true);
+                document.getElementById('teacherPassword').value = '';
+                document.getElementById('teacherName').value = '';
+            } else {
+                showMessage('creationMessage', data.message, false);
+            }
         }
 
         async function createNewStudent() {
